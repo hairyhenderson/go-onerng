@@ -6,11 +6,11 @@ This is a Go port of the OneRNG tools distributed at https://onerng.info/. Much 
 
 ## Roadmap
 
-This isn't anywhere near ready for prime-time yet. Here's what I want to be able to do with it:
+This is still fairly immature. Here's what I want to be able to do with it:
 
 - [x] print the version (`cmdv`)
 - [x] print the ID (`cmdI`)
-- [ ] verify the image (`cmdX` & verify PGP signature)
+- [x] verify the image (`cmdX` & verify PGP signature)
 - [ ] generate some amount of entropy
 - [ ] add extra AES128-whitening
 - [ ] run as a daemon and integrate with `rngd`
