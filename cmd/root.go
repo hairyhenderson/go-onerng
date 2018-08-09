@@ -51,6 +51,7 @@ func initConfig(ctx context.Context, cmd *cobra.Command) {
 		idCmd(ctx),
 		flushCmd(ctx),
 		imageCmd(ctx),
+		initCmd(ctx),
 	)
 
 	if cfgFile != "" { // enable ability to specify config file via flag
@@ -63,7 +64,7 @@ func initConfig(ctx context.Context, cmd *cobra.Command) {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
 	}
 }
 

@@ -1,8 +1,12 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 
+	"github.com/pkg/errors"
+
+	"github.com/hairyhenderson/go-onerng"
 	"github.com/spf13/cobra"
 )
 
@@ -78,7 +82,17 @@ func verifyCmd(ctx context.Context) *cobra.Command {
 		Use:   "verify",
 		Short: "Verify that OneRNG's firmware has not been tampered with.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return nil
+			o := onerng.OneRNG{Path: opts.Device}
+			err := o.Init(ctx)
+			if err != nil {
+				return errors.Wrapf(err, "init failed before image verification")
+			}
+			image, err := o.Image(ctx)
+			if err != nil {
+				return errors.Wrapf(err, "image extraction failed before verification")
+			}
+			err = onerng.Verify(ctx, bytes.NewBuffer(image), publicKey)
+			return err
 		},
 	}
 }
