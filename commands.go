@@ -31,3 +31,17 @@ const (
 	// CmdRF - Raw RF noise
 	CmdRF = "cmd7\n"
 )
+
+const (
+	// DisableWhitener - Disable the on-board CRC16 generator - no effect if both noise generators are disabled
+	DisableWhitener ReadMode = 1 << iota
+	// EnableRF - Enable noise generation from RF
+	EnableRF
+	// DisableAvalanche - Disable noise generation from the Avalanche Diode
+	DisableAvalanche
+
+	// Default - Avalanche enabled, RF disabled, Whitener enabled.
+	Default ReadMode = 0
+	// Silent - a convenience - everything disabled
+	Silent ReadMode = 4
+)

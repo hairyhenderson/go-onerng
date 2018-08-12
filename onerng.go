@@ -18,6 +18,9 @@ type OneRNG struct {
 	Path string
 }
 
+// ReadMode -
+type ReadMode uint32
+
 func (o *OneRNG) cmd(ctx context.Context, d *os.File, c ...string) (err error) {
 	for _, v := range c {
 		_, err = d.WriteString(v)
@@ -219,6 +222,25 @@ func (o *OneRNG) Init(ctx context.Context) error {
 	return nil
 }
 
+// Read -
+func (o *OneRNG) Read(ctx context.Context, out io.WriteCloser, n int64, flags ReadMode) (written int64, err error) {
+	d, err := os.OpenFile(o.Path, os.O_RDWR, 0600)
+	if err != nil {
+		return 0, err
+	}
+	defer d.Close()
+
+	err = o.cmd(ctx, d, NoiseCommand(flags), CmdRun)
+	if err != nil {
+		return 0, err
+	}
+
+	defer o.cmd(ctx, d, CmdPause)
+
+	written, err = copyWithContext(ctx, out, d, n)
+	return written, err
+}
+
 // readData - try to read some data from the RNG
 func (o *OneRNG) readData(ctx context.Context) (int, error) {
 	d, err := os.OpenFile(o.Path, os.O_RDWR, 0600)
@@ -289,4 +311,10 @@ func scan(ctx context.Context, d *os.File, buf chan string, errc chan error) {
 		case buf <- scanner.Text():
 		}
 	}
+}
+
+// NoiseCommand - returns the appropriate noise-generation command for the given flags
+func NoiseCommand(flags ReadMode) string {
+	num := strconv.Itoa(int(flags))
+	return "cmd" + num + "\n"
 }

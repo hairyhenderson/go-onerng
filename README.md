@@ -11,6 +11,6 @@ This is still fairly immature. Here's what I want to be able to do with it:
 - [x] print the version (`cmdv`)
 - [x] print the ID (`cmdI`)
 - [x] verify the image (`cmdX` & verify PGP signature)
-- [ ] generate some amount of entropy
+- [x] generate some amount of entropy (`onerng read` command)
 - [ ] add extra AES128-whitening
 - [ ] run as a daemon and integrate with `rngd`

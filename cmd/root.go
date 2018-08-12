@@ -52,6 +52,7 @@ func initConfig(ctx context.Context, cmd *cobra.Command) {
 		flushCmd(ctx),
 		imageCmd(ctx),
 		initCmd(ctx),
+		readCmd(ctx),
 	)
 
 	if cfgFile != "" { // enable ability to specify config file via flag

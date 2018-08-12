@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"os/signal"
-	"time"
 
 	"github.com/hairyhenderson/go-onerng/cmd"
 )
@@ -12,7 +11,7 @@ import (
 func main() {
 	ctx := context.Background()
 
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(3*time.Second))
+	ctx, cancel := context.WithCancel(ctx)
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	defer func() {
