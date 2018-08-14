@@ -18,7 +18,7 @@ func copyWithContext(ctx context.Context, dst io.Writer, src *os.File, n int64) 
 	allowedTimeouts := 10
 
 	rf := func(p []byte) (int, error) {
-		// we don't want reads to block forever, but we also don't want to time out immediately
+		// I don't want reads to block forever, but I also don't want to time out immediately
 		err := src.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
 		if err != nil {
 			return 0, err

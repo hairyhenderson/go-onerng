@@ -2,9 +2,13 @@ package onerng
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"fmt"
 	"io"
+	mrand "math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -15,15 +19,20 @@ import (
 
 // OneRNG - a OneRNG device
 type OneRNG struct {
-	Path string
+	Path   string
+	device *os.File
 }
 
 // ReadMode -
 type ReadMode uint32
 
-func (o *OneRNG) cmd(ctx context.Context, d *os.File, c ...string) (err error) {
+func (o *OneRNG) cmd(ctx context.Context, c ...string) error {
+	err := o.open()
+	if err != nil {
+		return err
+	}
 	for _, v := range c {
-		_, err = d.WriteString(v)
+		_, err = o.device.WriteString(v)
 		if err != nil {
 			return errors.Wrapf(err, "Errored on command %s", v)
 		}
@@ -36,15 +45,32 @@ func (o *OneRNG) cmd(ctx context.Context, d *os.File, c ...string) (err error) {
 	return nil
 }
 
+func (o *OneRNG) open() (err error) {
+	if o.device != nil {
+		return nil
+	}
+	o.device, err = os.OpenFile(o.Path, os.O_RDWR, 0600)
+	return err
+}
+
+func (o *OneRNG) close() error {
+	if o.device == nil {
+		return nil
+	}
+	err := o.device.Close()
+	o.device = nil
+	return err
+}
+
 // Version -
 func (o *OneRNG) Version(ctx context.Context) (int, error) {
-	d, err := os.OpenFile(o.Path, os.O_RDWR, 0600)
+	err := o.open()
 	if err != nil {
 		return 0, err
 	}
-	defer d.Close()
+	defer o.close()
 
-	err = o.cmd(ctx, d, CmdPause)
+	err = o.cmd(ctx, CmdPause)
 	if err != nil {
 		return 0, err
 	}
@@ -53,9 +79,9 @@ func (o *OneRNG) Version(ctx context.Context) (int, error) {
 	defer cancel()
 	buf := make(chan string)
 	errc := make(chan error, 1)
-	go scan(ctx, d, buf, errc)
+	go o.scan(ctx, buf, errc)
 
-	err = o.cmd(ctx, d, CmdSilent, CmdVersion, CmdRun)
+	err = o.cmd(ctx, CmdSilent, CmdVersion, CmdRun)
 	if err != nil {
 		return 0, err
 	}
@@ -78,7 +104,7 @@ loop:
 		}
 	}
 
-	err = o.cmd(ctx, d, CmdPause)
+	err = o.cmd(ctx, CmdPause)
 	if err != nil {
 		return 0, err
 	}
@@ -90,19 +116,19 @@ loop:
 
 // Identify -
 func (o *OneRNG) Identify(ctx context.Context) (string, error) {
-	d, err := os.OpenFile(o.Path, os.O_RDWR, 0600)
+	err := o.open()
 	if err != nil {
 		return "", err
 	}
-	defer d.Close()
+	defer o.close()
 
 	_, cancel := context.WithCancel(ctx)
 	defer cancel()
 	buf := make(chan string)
 	errc := make(chan error, 1)
-	go scan(ctx, d, buf, errc)
+	go o.scan(ctx, buf, errc)
 
-	err = o.cmd(ctx, d, CmdSilent, CmdID, CmdRun)
+	err = o.cmd(ctx, CmdSilent, CmdID, CmdRun)
 	if err != nil {
 		return "", err
 	}
@@ -125,7 +151,7 @@ loop:
 		}
 	}
 
-	err = o.cmd(ctx, d, CmdPause)
+	err = o.cmd(ctx, CmdPause)
 	if err != nil {
 		return "", err
 	}
@@ -135,27 +161,27 @@ loop:
 
 // Flush -
 func (o *OneRNG) Flush(ctx context.Context) error {
-	d, err := os.OpenFile(o.Path, os.O_RDWR, 0600)
+	err := o.open()
 	if err != nil {
 		return err
 	}
-	defer d.Close()
+	defer o.close()
 
 	_, cancel := context.WithCancel(ctx)
 	defer cancel()
-	err = o.cmd(ctx, d, CmdFlush)
+	err = o.cmd(ctx, CmdFlush)
 	return err
 }
 
 // Image -
 func (o *OneRNG) Image(ctx context.Context) ([]byte, error) {
-	d, err := os.OpenFile(o.Path, os.O_RDWR, 0600)
+	err := o.open()
 	if err != nil {
 		return nil, err
 	}
-	defer d.Close()
+	defer o.close()
 
-	err = o.cmd(ctx, d, CmdPause, CmdSilent)
+	err = o.cmd(ctx, CmdPause, CmdSilent)
 	if err != nil {
 		return nil, err
 	}
@@ -166,9 +192,9 @@ func (o *OneRNG) Image(ctx context.Context) ([]byte, error) {
 	defer cancel()
 	buf := make(chan []byte)
 	errc := make(chan error, 1)
-	go stream(ctx, d, 4, buf, errc)
+	go o.stream(ctx, 4, buf, errc)
 
-	err = o.cmd(ctx, d, CmdSilent, CmdImage, CmdRun)
+	err = o.cmd(ctx, CmdSilent, CmdImage, CmdRun)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +224,7 @@ loop:
 		}
 	}
 
-	err = o.cmd(ctx, d, CmdPause)
+	err = o.cmd(ctx, CmdPause)
 	if err != nil {
 		return nil, err
 	}
@@ -224,45 +250,45 @@ func (o *OneRNG) Init(ctx context.Context) error {
 
 // Read -
 func (o *OneRNG) Read(ctx context.Context, out io.WriteCloser, n int64, flags ReadMode) (written int64, err error) {
-	d, err := os.OpenFile(o.Path, os.O_RDWR, 0600)
+	err = o.open()
 	if err != nil {
 		return 0, err
 	}
-	defer d.Close()
+	defer o.close()
 
-	err = o.cmd(ctx, d, NoiseCommand(flags), CmdRun)
+	err = o.cmd(ctx, NoiseCommand(flags), CmdRun)
 	if err != nil {
 		return 0, err
 	}
 
-	defer o.cmd(ctx, d, CmdPause)
+	defer o.cmd(ctx, CmdPause)
 
-	written, err = copyWithContext(ctx, out, d, n)
+	written, err = copyWithContext(ctx, out, o.device, n)
 	return written, err
 }
 
 // readData - try to read some data from the RNG
 func (o *OneRNG) readData(ctx context.Context) (int, error) {
-	d, err := os.OpenFile(o.Path, os.O_RDWR, 0600)
+	err := o.open()
 	if err != nil {
 		return 0, err
 	}
-	defer d.Close()
+	defer o.close()
 
 	_, cancel := context.WithTimeout(ctx, 50*time.Millisecond)
 	defer cancel()
 
 	buf := make(chan []byte)
 	errc := make(chan error, 1)
-	go stream(ctx, d, 1, buf, errc)
+	go o.stream(ctx, 1, buf, errc)
 
-	err = o.cmd(ctx, d, CmdAvalanche, CmdRun)
+	err = o.cmd(ctx, CmdAvalanche, CmdRun)
 	if err != nil {
 		return 0, err
 	}
 
 	// make sure we always end with a pause/silence/flush
-	defer o.cmd(ctx, d, CmdPause, CmdSilent, CmdFlush)
+	defer o.cmd(ctx, CmdPause, CmdSilent, CmdFlush)
 
 	// blocking read from the channel, with a timeout (from context)
 	select {
@@ -277,12 +303,18 @@ func (o *OneRNG) readData(ctx context.Context) (int, error) {
 
 // stream from a file into a channel until an error is encountered, the channel
 // is closed, or the context is cancelled.
-func stream(ctx context.Context, d *os.File, bs int, buf chan []byte, errc chan error) {
+func (o *OneRNG) stream(ctx context.Context, bs int, buf chan []byte, errc chan error) {
+	err := o.open()
+	if err != nil {
+		errc <- err
+		return
+	}
+
 	defer close(buf)
 	defer close(errc)
 	for {
 		b := make([]byte, bs)
-		n, err := io.ReadAtLeast(d, b, len(b))
+		n, err := io.ReadAtLeast(o.device, b, len(b))
 		if err != nil {
 			errc <- err
 			return
@@ -300,10 +332,15 @@ func stream(ctx context.Context, d *os.File, bs int, buf chan []byte, errc chan 
 	}
 }
 
-func scan(ctx context.Context, d *os.File, buf chan string, errc chan error) {
+func (o *OneRNG) scan(ctx context.Context, buf chan string, errc chan error) {
+	err := o.open()
+	if err != nil {
+		errc <- err
+		return
+	}
 	defer close(buf)
 	defer close(errc)
-	scanner := bufio.NewScanner(d)
+	scanner := bufio.NewScanner(o.device)
 	for scanner.Scan() {
 		select {
 		case <-ctx.Done():
@@ -317,4 +354,56 @@ func scan(ctx context.Context, d *os.File, buf chan string, errc chan error) {
 func NoiseCommand(flags ReadMode) string {
 	num := strconv.Itoa(int(flags))
 	return "cmd" + num + "\n"
+}
+
+type aesWhitener struct {
+	out io.WriteCloser
+}
+
+// AESWhitener creates a "whitener" that wraps the provided writer. The random
+// data that the OneRNG generates is sometimes a little  "too" random for some
+// purposes (i.e. rngd), so this can be used to further mangle that data in non-
+// predictable ways.
+//
+// This uses AES-128.
+func (o *OneRNG) AESWhitener(ctx context.Context, out io.WriteCloser) (io.WriteCloser, error) {
+	k, err := o.key(ctx)
+	if err != nil {
+		return nil, err
+	}
+	block, err := aes.NewCipher(k)
+	if err != nil {
+		return nil, err
+	}
+
+	// create a random IV with math/rand - doesn't need to be cryptographically-random
+	iv := make([]byte, aes.BlockSize)
+	_, err = mrand.Read(iv)
+	if err != nil {
+		return nil, err
+	}
+
+	stream := cipher.NewCFBEncrypter(block, iv)
+	s := &cipher.StreamWriter{S: stream, W: out}
+	return s, nil
+}
+
+func (o *OneRNG) key(ctx context.Context) ([]byte, error) {
+	err := o.open()
+	if err != nil {
+		return []byte{}, err
+	}
+
+	buf := &bytes.Buffer{}
+
+	err = o.cmd(ctx, CmdAvalanche, CmdRun)
+	if err != nil {
+		return []byte{}, err
+	}
+	defer o.cmd(ctx, CmdPause)
+	// 16 bytes == AES-128
+	_, err = copyWithContext(ctx, buf, o.device, 16)
+	k := buf.Bytes()
+
+	return k, err
 }
