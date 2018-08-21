@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 
 var (
 	cfgFile string
-	opts    Config
+	opts    config
 )
 
 func rootCmd(ctx context.Context) *cobra.Command {
@@ -30,19 +30,9 @@ correctly, and that the firmware has not been tampered with.`,
 	}
 }
 
-// Execute -
-func Execute(ctx context.Context) {
-	cmd := rootCmd(ctx)
-	initConfig(ctx, cmd)
-	if err := cmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-}
-
 func initConfig(ctx context.Context, cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.go-onerng.yaml)")
-	opts = Config{}
+	opts = config{}
 	cmd.PersistentFlags().StringVarP(&opts.Device, "device", "d", "/dev/ttyACM0", "the OneRNG device")
 
 	cmd.AddCommand(
@@ -69,7 +59,6 @@ func initConfig(ctx context.Context, cmd *cobra.Command) {
 	}
 }
 
-// Config -
-type Config struct {
+type config struct {
 	Device string
 }

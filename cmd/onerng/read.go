@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"context"
@@ -26,7 +26,7 @@ func readCmd(ctx context.Context) *cobra.Command {
 		Use:   "read",
 		Short: "read some random data from the OneRNG",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			o := onerng.OneRNG{Path: opts.Device}
+			o := &onerng.OneRNG{Path: opts.Device}
 			err := o.Init(ctx)
 			if err != nil {
 				return errors.Wrapf(err, "init failed")

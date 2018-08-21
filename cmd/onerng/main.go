@@ -1,11 +1,12 @@
+// onerng: OneRNG hardware random number generation utility
+
 package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
-
-	"github.com/hairyhenderson/go-onerng/cmd"
 )
 
 func main() {
@@ -26,5 +27,10 @@ func main() {
 		}
 	}()
 
-	cmd.Execute(ctx)
+	cmd := rootCmd(ctx)
+	initConfig(ctx, cmd)
+	if err := cmd.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }

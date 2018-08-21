@@ -11,25 +11,13 @@ import (
 	"golang.org/x/crypto/openpgp"
 )
 
-//	looks like:
-//		fe ed be ef 20 14	- magic number
-//		00 00 04 		- len (little endian)
-//		00 00			- version (little endian)
-//		image			- len bytes of image
-type fwImage struct {
-	magic   [6]byte      // must be 0xfeedbeef2014
-	length  [3]byte      // LE
-	version [2]byte      // LE
-	_       [1]byte      //
-	fullimg [262144]byte // full image
-	// image   [261536]byte // 256kb minus end offset
-	// slen    [2]byte      // signature length
-	// sig     [543]byte    // signature
-	// endOff  [608]byte
-}
-
-// Verify - this is a more-or-less straight port from the onerng_verify.py script
-// distributed with the OneRNG package
+// Verify reads a signed firmware image, extracts the signature, and verifies
+// it against the given public key.
+//
+// Details are printed to Stderr on success, otherwise an error is returned.
+//
+// This is a more-or-less straight port from the official onerng_verify.py
+// script distributed alongside the OneRNG package.
 func Verify(ctx context.Context, image io.Reader, pubkey string) error {
 	var x byte
 	length := 0
@@ -107,9 +95,6 @@ func Verify(ctx context.Context, image io.Reader, pubkey string) error {
 			// split last part into image (signed part) & signature
 			signature := bytes.NewBuffer(c[length-endOff+2 : length-endOff+2+klen])
 			signed := bytes.NewBuffer(c[0 : length-endOff])
-
-			// leftovers := c[length-endOff+2+klen : length]
-			// fmt.Fprintf(os.Stderr, "leftovers (%d):\n%#x\n", len(leftovers), leftovers)
 
 			// read public key
 			keyring, err := openpgp.ReadArmoredKeyRing(bytes.NewBufferString(pubkey))
