@@ -403,7 +403,7 @@ const (
 )
 
 // AESWhitener creates a "whitener" that wraps the provided writer. The random
-// data that the OneRNG generates is sometimes a little  "too" random for some
+// data that the OneRNG generates is sometimes a little "too" random for some
 // purposes (i.e. rngd), so this can be used to further mangle that data in non-
 // predictable ways.
 //
