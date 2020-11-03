@@ -8,31 +8,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// func TestNoiseCommand(t *testing.T) {
-// 	fmt.Println(DisableWhitener)
-// 	fmt.Println(EnableRF)
-// 	fmt.Println(DisableAvalanche)
-
-// 	fmt.Println(Default)
-// 	fmt.Println(Silent)
-
-// 	testdata := []struct {
-// 		flags NoiseMode
-// 		cmd   string
-// 	}{
-// 		{Default, "cmd0\n"},
-// 		{DisableWhitener, "cmd1\n"},
-// 		{EnableRF, "cmd2\n"},
-// 		{EnableRF | DisableWhitener, "cmd3\n"},
-// 		{DisableAvalanche, "cmd4\n"},
-// 		{DisableAvalanche | DisableWhitener, "cmd5\n"},
-// 		{DisableAvalanche | EnableRF, "cmd6\n"},
-// 		{DisableAvalanche | EnableRF | DisableWhitener, "cmd7\n"},
-// 	}
-// 	for _, d := range testdata {
-// 		assert.Equal(t, d.cmd, noiseCommand(d.flags), d.cmd, d.flags)
-// 	}
-// }
+func TestNoiseCommand(t *testing.T) {
+	testdata := []struct {
+		flags NoiseMode
+		cmd   string
+	}{
+		{Default, "cmd0\n"},
+		{DisableWhitener, "cmd1\n"},
+		{EnableRF, "cmd2\n"},
+		{EnableRF | DisableWhitener, "cmd3\n"},
+		{Silent, "cmd4\n"},
+		{DisableAvalanche, "cmd4\n"},
+		{DisableAvalanche | DisableWhitener, "cmd5\n"},
+		{DisableAvalanche | EnableRF, "cmd6\n"},
+		{DisableAvalanche | EnableRF | DisableWhitener, "cmd7\n"},
+	}
+	for _, d := range testdata {
+		assert.Equal(t, d.cmd, noiseCommand(d.flags), d.cmd, d.flags)
+	}
+}
 
 type fakeDev struct {
 	closed bool
@@ -48,6 +42,7 @@ func (d *fakeDev) reset() {
 
 func (d *fakeDev) Close() error {
 	d.closed = true
+
 	return nil
 }
 
@@ -100,4 +95,20 @@ func TestVersion(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "cmdo\ncmd4\ncmdv\ncmdO\ncmdo\n", d.wbuf.String())
 	assert.Equal(t, 3, v)
+}
+
+func TestIdentify(t *testing.T) {
+	d := &fakeDev{
+		wbuf: &bytes.Buffer{},
+		rbuf: bytes.NewBufferString("dfoawiuhf98h9inf2oifoi2jr\n" +
+			"dfkjawflihjwfoiuh2rliu13he487631487645t98y23rtoqu3rbno9q34htgfv\n" +
+			"\r\nVersion 3\r\nas;dlfjaw;oihf2ih2o3iuf2ofnlo2jnlfuhf2iou\n\n" +
+			"dlfkhadslfihwaflkhjw\n___lskdjfalsdkjflsd___\n\n"),
+	}
+	o := &OneRNG{Path: "/dev/null", device: d}
+	ctx := context.Background()
+	id, err := o.Identify(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, "cmd4\ncmdI\ncmdO\ncmdo\n", d.wbuf.String())
+	assert.Equal(t, "___lskdjfalsdkjflsd___", id)
 }

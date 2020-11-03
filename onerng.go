@@ -35,14 +35,13 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
+	"fmt"
 	"io"
 	mrand "math/rand"
 	"os"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 // OneRNG - a OneRNG device
@@ -50,6 +49,8 @@ type OneRNG struct {
 	Path   string
 	device io.ReadWriteCloser
 }
+
+const copyReadTimeout = 500 * time.Millisecond
 
 // cmd sends one or more commands to the OneRNG. The device is not closed on
 // completion, as it's usually being read from simultaneously.
@@ -61,7 +62,7 @@ func (o *OneRNG) cmd(ctx context.Context, c ...string) error {
 	for _, v := range c {
 		_, err = o.device.Write([]byte(v))
 		if err != nil {
-			return errors.Wrapf(err, "Errored on command %q", v)
+			return fmt.Errorf("errored on command %q: %w", v, err)
 		}
 		select {
 		case <-ctx.Done():
@@ -69,6 +70,7 @@ func (o *OneRNG) cmd(ctx context.Context, c ...string) error {
 		default:
 		}
 	}
+
 	return nil
 }
 
@@ -79,6 +81,7 @@ func (o *OneRNG) open() (err error) {
 		return nil
 	}
 	o.device, err = os.OpenFile(o.Path, os.O_RDWR, 0600)
+
 	return err
 }
 
@@ -89,6 +92,7 @@ func (o *OneRNG) close() error {
 	}
 	err := o.device.Close()
 	o.device = nil
+
 	return err
 }
 
@@ -105,7 +109,7 @@ func (o *OneRNG) Version(ctx context.Context) (int, error) {
 		return 0, err
 	}
 
-	_, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	buf := make(chan string)
 	errc := make(chan error, 1)
@@ -127,9 +131,10 @@ loop:
 			if strings.HasPrefix(b, "Version ") {
 				verString = b
 				cancel()
+
 				break loop
 			}
-		case err := <-errc:
+		case err = <-errc:
 			return 0, err
 		}
 	}
@@ -141,6 +146,7 @@ loop:
 
 	n := strings.Replace(verString, "Version ", "", 1)
 	version, err := strconv.Atoi(n)
+
 	return version, err
 }
 
@@ -174,9 +180,10 @@ loop:
 			if strings.HasPrefix(b, "___") {
 				idString = b
 				cancel()
+
 				break loop
 			}
-		case err := <-errc:
+		case err = <-errc:
 			return "", err
 		}
 	}
@@ -199,14 +206,15 @@ func (o *OneRNG) Flush(ctx context.Context) error {
 
 	_, cancel := context.WithCancel(ctx)
 	defer cancel()
-	err = o.cmd(ctx, cmdFlush)
-	return err
+
+	return o.cmd(ctx, cmdFlush)
 }
 
 // Image extracts the firmware image. This image is padded with random data to
 // either 128Kb or 256Kb (depending on hardware), and signed.
 //
 // See also the Verify function.
+//nolint:gocyclo
 func (o *OneRNG) Image(ctx context.Context) ([]byte, error) {
 	err := o.open()
 	if err != nil {
@@ -219,9 +227,7 @@ func (o *OneRNG) Image(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 
-	time.Sleep(2 * time.Second)
-
-	_, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	buf := make(chan []byte)
 	errc := make(chan error, 1)
@@ -234,25 +240,24 @@ func (o *OneRNG) Image(ctx context.Context) ([]byte, error) {
 
 	image := []byte{}
 	zeros := 0
-loop:
-	for {
+	// stream data until we're done, or until we have 200+ consecutive zeroes
+	//nolint:gomnd
+	for zeros <= 200 {
 		var b []byte
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case b = <-buf:
 			image = append(image, b...)
+			// count consecutive zeroes - if we hit non-zero, reset
 			for _, v := range b {
 				if v == 0 {
 					zeros++
 				} else {
 					zeros = 0
 				}
-				if zeros > 200 {
-					break loop
-				}
 			}
-		case err := <-errc:
+		case err = <-errc:
 			return nil, err
 		}
 	}
@@ -278,6 +283,7 @@ func (o *OneRNG) Init(ctx context.Context) error {
 		}
 	}
 	// fmt.Fprintf(os.Stderr, "Initialized after %d loops\n", i)
+
 	return nil
 }
 
@@ -298,13 +304,15 @@ func (o *OneRNG) Read(ctx context.Context, out io.Writer, n int64, flags NoiseMo
 		return 0, err
 	}
 
+	//nolint:errcheck
 	defer o.cmd(ctx, cmdPause)
 
 	written, err = copyWithContext(ctx, out, o.device, n)
+
 	return written, err
 }
 
-// readData - try to read some data from the RNG
+// readData - try to read some data from the RNG (during initialization)
 func (o *OneRNG) readData(ctx context.Context) (int, error) {
 	err := o.open()
 	if err != nil {
@@ -312,7 +320,8 @@ func (o *OneRNG) readData(ctx context.Context) (int, error) {
 	}
 	defer o.close()
 
-	_, cancel := context.WithTimeout(ctx, 50*time.Millisecond)
+	const readTimeout = 50 * time.Millisecond
+	_, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
 
 	buf := make(chan []byte)
@@ -325,6 +334,7 @@ func (o *OneRNG) readData(ctx context.Context) (int, error) {
 	}
 
 	// make sure we always end with a pause/silence/flush
+	//nolint:errcheck
 	defer o.cmd(ctx, cmdPause, noiseCommand(Silent), cmdFlush)
 
 	// blocking read from the channel, with a timeout (from context)
@@ -344,6 +354,7 @@ func (o *OneRNG) stream(ctx context.Context, bs int, buf chan []byte, errc chan 
 	err := o.open()
 	if err != nil {
 		errc <- err
+
 		return
 	}
 
@@ -354,10 +365,12 @@ func (o *OneRNG) stream(ctx context.Context, bs int, buf chan []byte, errc chan 
 		n, err := io.ReadAtLeast(o.device, b, len(b))
 		if err != nil {
 			errc <- err
+
 			return
 		}
 		if n < len(b) {
-			errc <- errors.Errorf("unexpected short read - wanted %db, read %db", len(b), n)
+			errc <- fmt.Errorf("unexpected short read: wanted %db, read %db", len(b), n)
+
 			return
 		}
 
@@ -373,6 +386,7 @@ func (o *OneRNG) scan(ctx context.Context, buf chan string, errc chan error) {
 	err := o.open()
 	if err != nil {
 		errc <- err
+
 		return
 	}
 	defer close(buf)
@@ -408,7 +422,7 @@ const (
 // predictable ways.
 //
 // This uses AES-128.
-func (o *OneRNG) AESWhitener(ctx context.Context, out io.WriteCloser) (io.WriteCloser, error) {
+func (o *OneRNG) AESWhitener(ctx context.Context, out io.Writer) (io.WriteCloser, error) {
 	k, err := o.key(ctx)
 	if err != nil {
 		return nil, err
@@ -418,8 +432,10 @@ func (o *OneRNG) AESWhitener(ctx context.Context, out io.WriteCloser) (io.WriteC
 		return nil, err
 	}
 
-	// create a random IV with math/rand - doesn't need to be cryptographically-random
+	// create a random IV with math/rand - doesn't need to be cryptographically-random,
+	// and we don't want to consume entropy while trying to generate entropy...
 	iv := make([]byte, aes.BlockSize)
+	//nolint:gosec
 	_, err = mrand.Read(iv)
 	if err != nil {
 		return nil, err
@@ -427,6 +443,7 @@ func (o *OneRNG) AESWhitener(ctx context.Context, out io.WriteCloser) (io.WriteC
 
 	stream := cipher.NewCFBEncrypter(block, iv)
 	s := &cipher.StreamWriter{S: stream, W: out}
+
 	return s, nil
 }
 
@@ -442,7 +459,10 @@ func (o *OneRNG) key(ctx context.Context) ([]byte, error) {
 	if err != nil {
 		return []byte{}, err
 	}
+
+	//nolint:errcheck
 	defer o.cmd(ctx, cmdPause)
+
 	// 16 bytes == AES-128
 	_, err = copyWithContext(ctx, buf, o.device, 16)
 	k := buf.Bytes()
@@ -464,12 +484,13 @@ const (
 	// Default mode - Avalanche enabled, RF disabled, Whitener enabled.
 	Default NoiseMode = 0
 	// Silent - a convenience - everything disabled
-	Silent NoiseMode = 4
+	Silent NoiseMode = DisableAvalanche
 )
 
 // noiseCommand converts the given mode to the appropriate command to send to the OneRNG
 func noiseCommand(flags NoiseMode) string {
 	num := strconv.Itoa(int(flags))
+
 	return "cmd" + num + "\n"
 }
 
@@ -485,7 +506,7 @@ func copyWithContext(ctx context.Context, dst io.Writer, src io.Reader, n int64)
 	rf := func(p []byte) (int, error) {
 		if f, ok := src.(*os.File); ok {
 			// I don't want reads to block forever, but I also don't want to time out immediately
-			err := f.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+			err := f.SetReadDeadline(time.Now().Add(copyReadTimeout))
 			if err != nil {
 				return 0, err
 			}
@@ -499,9 +520,11 @@ func copyWithContext(ctx context.Context, dst io.Writer, src io.Reader, n int64)
 			if allowedTimeouts > 0 {
 				if err != nil && os.IsTimeout(err) {
 					allowedTimeouts--
+
 					return n, nil
 				}
 			}
+
 			return n, err
 		}
 	}
@@ -509,5 +532,6 @@ func copyWithContext(ctx context.Context, dst io.Writer, src io.Reader, n int64)
 	if n < 0 {
 		return io.Copy(dst, readerFunc(rf))
 	}
+
 	return io.CopyN(dst, readerFunc(rf), n)
 }
