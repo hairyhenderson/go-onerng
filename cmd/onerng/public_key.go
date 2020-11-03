@@ -1,17 +1,9 @@
 package main
 
-import (
-	"bytes"
-	"context"
-
-	"github.com/pkg/errors"
-
-	"github.com/hairyhenderson/go-onerng"
-	"github.com/spf13/cobra"
-)
-
-const (
-	publicKey = `-----BEGIN PGP PUBLIC KEY BLOCK-----
+// extracted from onerng_verify.py bundled in
+// https://github.com/OneRNG/onerng.github.io/raw/master/sw/onerng_3.6-1_all.deb
+// SHA256: a9ccf7b04ee317dbfc91518542301e2d60ebe205d38e80563f29aac7cd845ccb
+const publicKey = `-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1
 
 mQINBFPXhxIBEADHeR56yhuF77hOErNk6LXTvbNIViVBG/Ss6cHJcnarnLjaGZ5y
@@ -75,24 +67,3 @@ W2KHfJBcr1Ag0zZ5q1SoyMiqFmhgo0i+D58QIjtNw7JVyOYZPw==
 =IjnI
 -----END PGP PUBLIC KEY BLOCK-----
 `
-)
-
-func verifyCmd(ctx context.Context) *cobra.Command {
-	return &cobra.Command{
-		Use:   "verify",
-		Short: "Verify that OneRNG's firmware has not been tampered with.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			o := onerng.OneRNG{Path: opts.Device}
-			err := o.Init(ctx)
-			if err != nil {
-				return errors.Wrapf(err, "init failed before image verification")
-			}
-			image, err := o.Image(ctx)
-			if err != nil {
-				return errors.Wrapf(err, "image extraction failed before verification")
-			}
-			err = onerng.Verify(ctx, bytes.NewBuffer(image), publicKey)
-			return err
-		},
-	}
-}

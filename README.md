@@ -2,7 +2,9 @@
 
 # go-onerng
 
-This is a Go port of the OneRNG tools distributed at https://onerng.info/. Much credit is due to the OneRNG creators - all I'm doing here is porting a bunch of Bash and Python code to Go.
+This is an unofficial Go version of the OneRNG tools distributed at https://onerng.info/. Much credit is due to the OneRNG creators - this all started as a port of a bunch of Bash and Python code to Go.
+
+The different commands available were discovered by reading [the firmware source code](https://github.com/OneRNG/firmware/blob/master/cdc_app.c#L346).
 
 ## Roadmap
 
