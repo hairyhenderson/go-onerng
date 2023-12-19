@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 
+	//nolint:staticcheck
 	"golang.org/x/crypto/openpgp"
 )
 
@@ -17,7 +18,7 @@ import (
 //
 // The general logic is ported from the official onerng_verify.py script
 // distributed alongside the OneRNG package.
-func Verify(ctx context.Context, image io.Reader, pubkey string) error {
+func Verify(_ context.Context, image io.Reader, pubkey string) error {
 	if err := readMagic(image); err != nil {
 		return fmt.Errorf("failed to find magic number: %w", err)
 	}
@@ -42,6 +43,7 @@ func read(r io.Reader, p []byte) error {
 }
 
 // readHeader reads the header and returns the length and the version
+//
 //nolint:gomnd
 func readHeader(r io.Reader) (length, version int, err error) {
 	// read the length
@@ -70,7 +72,6 @@ func readHeader(r io.Reader) (length, version int, err error) {
 }
 
 // readMagic reads the input until the magic sequence 0xfeedbeef2014 is found
-//nolint:gomnd, gocyclo
 func readMagic(r io.Reader) error {
 	for i := int8(0); i < 6; i++ {
 		c := make([]byte, 1)

@@ -16,7 +16,7 @@ func createORNG(cmd *cobra.Command) *onerng.OneRNG {
 	return &onerng.OneRNG{Path: cmd.Flag("device").Value.String()}
 }
 
-func idCmd(cmd *cobra.Command, args []string) error {
+func idCmd(cmd *cobra.Command, _ []string) error {
 	o := createORNG(cmd)
 	id, err := o.Identify(cmd.Context())
 	if err != nil {
@@ -27,7 +27,7 @@ func idCmd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func versionCmd(cmd *cobra.Command, args []string) error {
+func versionCmd(cmd *cobra.Command, _ []string) error {
 	o := createORNG(cmd)
 	version, err := o.Version(cmd.Context())
 	if err != nil {
@@ -38,19 +38,19 @@ func versionCmd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func flushCmd(cmd *cobra.Command, args []string) error {
+func flushCmd(cmd *cobra.Command, _ []string) error {
 	o := createORNG(cmd)
 
 	return o.Flush(cmd.Context())
 }
 
-func initCmd(cmd *cobra.Command, args []string) error {
+func initCmd(cmd *cobra.Command, _ []string) error {
 	o := createORNG(cmd)
 
 	return o.Init(cmd.Context())
 }
 
-func verifyCmd(cmd *cobra.Command, args []string) error {
+func verifyCmd(cmd *cobra.Command, _ []string) error {
 	ctx := cmd.Context()
 	o := createORNG(cmd)
 	err := o.Init(ctx)
@@ -66,7 +66,7 @@ func verifyCmd(cmd *cobra.Command, args []string) error {
 	return err
 }
 
-func imageCmd(cmd *cobra.Command, args []string) error {
+func imageCmd(cmd *cobra.Command, _ []string) error {
 	ctx := cmd.Context()
 	o := createORNG(cmd)
 
@@ -125,7 +125,7 @@ func readFlags(cmd *cobra.Command) (onerng.NoiseMode, error) {
 }
 
 //nolint:gocyclo
-func readCmd(cmd *cobra.Command, args []string) error {
+func readCmd(cmd *cobra.Command, _ []string) error {
 	ctx := cmd.Context()
 	o := createORNG(cmd)
 	err := o.Init(ctx)
@@ -184,6 +184,7 @@ func readCmd(cmd *cobra.Command, args []string) error {
 
 // humanizeBytes produces a human readable representation of an IEC size.
 // Taken from github.com/dustin/go-humanize
+//
 //nolint:gomnd
 func humanizeBytes(s float64) string {
 	base := 1024.0
