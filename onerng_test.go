@@ -10,18 +10,18 @@ import (
 
 func TestNoiseCommand(t *testing.T) {
 	testdata := []struct {
-		flags NoiseMode
 		cmd   string
+		flags NoiseMode
 	}{
-		{Default, "cmd0\n"},
-		{DisableWhitener, "cmd1\n"},
-		{EnableRF, "cmd2\n"},
-		{EnableRF | DisableWhitener, "cmd3\n"},
-		{Silent, "cmd4\n"},
-		{DisableAvalanche, "cmd4\n"},
-		{DisableAvalanche | DisableWhitener, "cmd5\n"},
-		{DisableAvalanche | EnableRF, "cmd6\n"},
-		{DisableAvalanche | EnableRF | DisableWhitener, "cmd7\n"},
+		{flags: Default, cmd: "cmd0\n"},
+		{flags: DisableWhitener, cmd: "cmd1\n"},
+		{flags: EnableRF, cmd: "cmd2\n"},
+		{flags: EnableRF | DisableWhitener, cmd: "cmd3\n"},
+		{flags: Silent, cmd: "cmd4\n"},
+		{flags: DisableAvalanche, cmd: "cmd4\n"},
+		{flags: DisableAvalanche | DisableWhitener, cmd: "cmd5\n"},
+		{flags: DisableAvalanche | EnableRF, cmd: "cmd6\n"},
+		{flags: DisableAvalanche | EnableRF | DisableWhitener, cmd: "cmd7\n"},
 	}
 	for _, d := range testdata {
 		assert.Equal(t, d.cmd, noiseCommand(d.flags), d.cmd, d.flags)
@@ -29,9 +29,9 @@ func TestNoiseCommand(t *testing.T) {
 }
 
 type fakeDev struct {
-	closed bool
 	rbuf   *bytes.Buffer
 	wbuf   *bytes.Buffer
+	closed bool
 }
 
 func (d *fakeDev) reset() {

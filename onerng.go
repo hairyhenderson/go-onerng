@@ -46,8 +46,8 @@ import (
 
 // OneRNG - a OneRNG device
 type OneRNG struct {
-	Path   string
 	device io.ReadWriteCloser
+	Path   string
 }
 
 const copyReadTimeout = 500 * time.Millisecond
@@ -80,7 +80,7 @@ func (o *OneRNG) open() (err error) {
 	if o.device != nil {
 		return nil
 	}
-	o.device, err = os.OpenFile(o.Path, os.O_RDWR, 0600)
+	o.device, err = os.OpenFile(o.Path, os.O_RDWR, 0o600)
 
 	return err
 }
@@ -214,6 +214,7 @@ func (o *OneRNG) Flush(ctx context.Context) error {
 // either 128Kb or 256Kb (depending on hardware), and signed.
 //
 // See also the Verify function.
+//
 //nolint:gocyclo
 func (o *OneRNG) Image(ctx context.Context) ([]byte, error) {
 	err := o.open()
@@ -241,7 +242,6 @@ func (o *OneRNG) Image(ctx context.Context) ([]byte, error) {
 	image := []byte{}
 	zeros := 0
 	// stream data until we're done, or until we have 200+ consecutive zeroes
-	//nolint:gomnd
 	for zeros <= 200 {
 		var b []byte
 		select {
@@ -435,8 +435,9 @@ func (o *OneRNG) AESWhitener(ctx context.Context, out io.Writer) (io.WriteCloser
 	// create a random IV with math/rand - doesn't need to be cryptographically-random,
 	// and we don't want to consume entropy while trying to generate entropy...
 	iv := make([]byte, aes.BlockSize)
+	src := mrand.NewSource(time.Now().UnixNano())
 	//nolint:gosec
-	_, err = mrand.Read(iv)
+	_, err = mrand.New(src).Read(iv)
 	if err != nil {
 		return nil, err
 	}
@@ -464,7 +465,7 @@ func (o *OneRNG) key(ctx context.Context) ([]byte, error) {
 	defer o.cmd(ctx, cmdPause)
 
 	// 16 bytes == AES-128
-	_, err = copyWithContext(ctx, buf, o.device, 16)
+	_, err = copyWithContext(ctx, buf, o.device, aes.BlockSize)
 	k := buf.Bytes()
 
 	return k, err
