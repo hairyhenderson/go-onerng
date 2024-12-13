@@ -5,7 +5,7 @@ go 1.21.5
 require (
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/crypto v0.17.0
+	golang.org/x/crypto v0.31.0
 )
 
 require (
