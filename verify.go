@@ -43,8 +43,6 @@ func read(r io.Reader, p []byte) error {
 }
 
 // readHeader reads the header and returns the length and the version
-//
-//nolint:gomnd
 func readHeader(r io.Reader) (length, version int, err error) {
 	// read the length
 	l := make([]byte, 3)
@@ -138,7 +136,6 @@ func verifyImage(signed, sig []byte, pubkey string) (signer *openpgp.Entity, err
 	return signer, nil
 }
 
-//nolint:gomnd
 func parseImage(image io.Reader, version, length int) (signed, sig []byte, err error) {
 	c := make([]byte, length)
 	n, err := io.ReadAtLeast(image, c, length)
