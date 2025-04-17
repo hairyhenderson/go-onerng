@@ -21,7 +21,7 @@ func commands() *cobra.Command {
 This tool can be used to verify that the OneRNG device operates
 correctly, and that the firmware has not been tampered with.`,
 		Version: version.Version,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			cmd.SilenceErrors = true
 			cmd.SilenceUsage = true
 

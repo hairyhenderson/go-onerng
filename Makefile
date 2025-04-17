@@ -48,7 +48,7 @@ test:
 endif
 
 lint:
-	@golangci-lint run --max-same-issues=0 --sort-results
+	@golangci-lint run --max-same-issues=0
 
 .PHONY: clean test build lint
 .DELETE_ON_ERROR:

@@ -1,24 +1,7 @@
-linters-settings:
-  govet:
-    check-shadowing: true
-    enable-all: true
-  golint:
-    min-confidence: 0
-  gocyclo:
-    min-complexity: 10
-  dupl:
-    threshold: 100
-  goconst:
-    min-len: 2
-    min-occurrences: 4
-    ignore-tests: true
-  nolintlint:
-    allow-unused: false # report any unused nolint directives
-    require-explanation: false # don't require an explanation for nolint directives
-    require-specific: false # don't require nolint directives to be specific about which linter is being skipped
+version: "2"
 
 linters:
-  disable-all: true
+  default: none
   enable:
     - asciicheck
     - bodyclose
@@ -26,25 +9,15 @@ linters:
     - dupl
     - errcheck
     - exhaustive
-    - exportloopref
-    # - funlen
-    # - gci
-    # - gochecknoglobals
     - gochecknoinits
     - gocognit
     - goconst
     - gocritic
     - gocyclo
-    # - godox
-    - gofmt
-    - gofumpt
     - goheader
-    - goimports
-    # - gomnd
     - gomodguard
     - goprintffuncname
     - gosec
-    - gosimple
     - govet
     - ineffassign
     - misspell
@@ -58,10 +31,50 @@ linters:
     - rowserrcheck
     - sqlclosecheck
     - staticcheck
-    - stylecheck
-    - typecheck
     - unconvert
     - unparam
     - unused
     - whitespace
-    # - wsl
+
+  settings:
+    dupl:
+      threshold: 100
+    goconst:
+      min-len: 2
+      min-occurrences: 4
+    gocyclo:
+      min-complexity: 10
+    govet:
+      enable-all: true
+    nolintlint:
+      allow-unused: false # report any unused nolint directives
+      require-explanation: false # don't require an explanation for nolint directives
+      require-specific: false # don't require nolint directives to be specific about which linter is being skipped
+
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - goconst
+        path: (.+)_test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

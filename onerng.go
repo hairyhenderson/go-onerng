@@ -442,6 +442,7 @@ func (o *OneRNG) AESWhitener(ctx context.Context, out io.Writer) (io.WriteCloser
 		return nil, err
 	}
 
+	//nolint:staticcheck // not ready to change the algorithm yet
 	stream := cipher.NewCFBEncrypter(block, iv)
 	s := &cipher.StreamWriter{S: stream, W: out}
 

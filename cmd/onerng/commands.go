@@ -184,8 +184,6 @@ func readCmd(cmd *cobra.Command, _ []string) error {
 
 // humanizeBytes produces a human readable representation of an IEC size.
 // Taken from github.com/dustin/go-humanize
-//
-//nolint:gomnd
 func humanizeBytes(s float64) string {
 	base := 1024.0
 	sizes := []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"}
