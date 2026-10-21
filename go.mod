@@ -2,6 +2,8 @@ module github.com/hairyhenderson/go-onerng
 
 go 1.24.0
 
+toolchain go1.27.3
+
 require (
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4
