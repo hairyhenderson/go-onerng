@@ -7,7 +7,7 @@ jobs:
     container:
       image: ghcr.io/hairyhenderson/gomplate-ci-build:latest@sha256:c7a529cf5283bc096759b1e1ad02d72539cd3c4ee5dc0131678d16be57d98eac
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e # v1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - run: make build
       - run: make test
   lint:
@@ -15,5 +15,5 @@ jobs:
     container:
       image: ghcr.io/hairyhenderson/gomplate-ci-build:latest@sha256:c7a529cf5283bc096759b1e1ad02d72539cd3c4ee5dc0131678d16be57d98eac
     steps:
-      - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e # v1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - run: make lint
