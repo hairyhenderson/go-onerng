@@ -35,9 +35,9 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	"fmt"
 	"io"
-	mrand "math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -432,18 +432,15 @@ func (o *OneRNG) AESWhitener(ctx context.Context, out io.Writer) (io.WriteCloser
 		return nil, err
 	}
 
-	// create a random IV with math/rand - doesn't need to be cryptographically-random,
-	// and we don't want to consume entropy while trying to generate entropy...
+	// create a random IV - reading 16 bytes from crypto/rand doesn't
+	// meaningfully deplete the system's entropy pool
 	iv := make([]byte, aes.BlockSize)
-	src := mrand.NewSource(time.Now().UnixNano())
-	//nolint:gosec
-	_, err = mrand.New(src).Read(iv)
+	_, err = rand.Read(iv)
 	if err != nil {
 		return nil, err
 	}
 
-	// gosec (G407) only sees the zeroed make() above, not the random fill
-	//nolint:gosec,staticcheck // not ready to change the algorithm yet
+	//nolint:staticcheck // not ready to change the algorithm yet
 	stream := cipher.NewCFBEncrypter(block, iv)
 	s := &cipher.StreamWriter{S: stream, W: out}
 

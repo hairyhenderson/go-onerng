@@ -1,6 +1,9 @@
 name: Build
 on: [push]
 
+permissions:
+  contents: read
+
 jobs:
   linux-build:
     runs-on: ubuntu-latest
@@ -8,6 +11,8 @@ jobs:
       image: ghcr.io/hairyhenderson/gomplate-ci-build:latest@sha256:c7a529cf5283bc096759b1e1ad02d72539cd3c4ee5dc0131678d16be57d98eac
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
       - run: make build
       - run: make test
   lint:
@@ -16,4 +21,6 @@ jobs:
       image: ghcr.io/hairyhenderson/gomplate-ci-build:latest@sha256:c7a529cf5283bc096759b1e1ad02d72539cd3c4ee5dc0131678d16be57d98eac
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
       - run: make lint
